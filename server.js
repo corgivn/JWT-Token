@@ -13,44 +13,41 @@ app.use(express.urlencoded({ extended: true }));
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
-const PARTNER_CODE = process.env.YOUR_PARTNER_CODE || 'DEFAULT_PARTNER';
-const API_KEY = process.env.YOUR_API_KEY || 'DEFAULT_API_KEY';
-
 // Helper function to generate current timestamp
 const getCurrentTimestamp = () => Math.floor(Date.now() / 1000);
 
 // Route to generate JWT token
 app.post('/api/generate-token', (req, res) => {
     try {
-        const currentTime = getCurrentTimestamp();
-        const expirationTime = currentTime + (60 * 60); // 1 hour from now
+        // Get JWT header from custom HTTP header (x-jwt-header)
+        const headerRaw = req.headers['x-jwt-header'];
+        let header;
+        try {
+            header = JSON.parse(headerRaw);
+        } catch (e) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid or missing x-jwt-header. It must be a valid JSON string.'
+            });
+        }
 
-        // JWT Header (automatically handled by jsonwebtoken library)
-        const header = {
-            typ: 'JWT',
-            alg: 'HS256',
-            cty: 'appotapay-api;v=1'
-        };
+        const { payload } = req.body;
+        if (!header || !payload) {
+            return res.status(400).json({
+                success: false,
+                error: 'Both x-jwt-header and payload are required.'
+            });
+        }
 
-        // JWT Payload according to your specification
-        const payload = {
-            iss: PARTNER_CODE,
-            jti: `${API_KEY}-${currentTime}`,
-            api_key: API_KEY,
-            exp: expirationTime
-        };
-
-        // Generate the token with custom header
+        // Generate the token with custom header and payload
         const token = jwt.sign(payload, JWT_SECRET, {
-            algorithm: 'HS256',
+            algorithm: header.alg || 'HS256',
             header: header
         });
 
         res.json({
             success: true,
-            token: token,
-            expires_at: new Date(expirationTime * 1000).toISOString(),
-            issued_at: new Date(currentTime * 1000).toISOString()
+            token: token
         });
 
     } catch (error) {
@@ -203,8 +200,6 @@ app.listen(PORT, () => {
     console.log(`🚀 JWT Token Server is running on port ${PORT}`);
     console.log(`📝 API Documentation: http://localhost:${PORT}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🔑 Partner Code: ${PARTNER_CODE}`);
-    console.log(`🔐 API Key: ${API_KEY}`);
 });
 
 module.exports = app;
