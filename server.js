@@ -38,7 +38,6 @@ app.post('/api/generate-token', (req, res) => {
                 error: 'Both x-jwt-header and payload are required.'
             });
         }
-
         // Generate the token with custom header and payload
         const token = jwt.sign(payload, JWT_SECRET, {
             algorithm: header.alg || 'HS256',
@@ -47,7 +46,8 @@ app.post('/api/generate-token', (req, res) => {
 
         res.json({
             success: true,
-            token: token
+            token: token,
+            uuid: require('crypto').randomUUID()
         });
 
     } catch (error) {
